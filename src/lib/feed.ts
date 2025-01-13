@@ -27,7 +27,7 @@ export function parseFeed(xml: string, options = {}): Promise<Item[]> {
     // Wait for all items to be collected, then resolve.
     feed.on('readable', function readItems(this: FeedParser) {
       let item
-      while (item = this.read()) {
+      while ((item = this.read())) {
         items.push(item)
       }
       resolve(items)
