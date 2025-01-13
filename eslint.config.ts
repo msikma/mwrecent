@@ -16,7 +16,8 @@ export default tseslint.config(
       '@stylistic/quotes': ['error', 'single', {allowTemplateLiterals: true, avoidEscape: true}],
       '@stylistic/no-tabs': ['error'],
       '@stylistic/object-curly-spacing': ['error', 'never'],
-      '@stylistic/semi': ['error', 'never']
+      '@stylistic/semi': ['error', 'never'],
+      'no-control-regex': ['off'],
     }
   },
   {
@@ -28,6 +29,6 @@ export default tseslint.config(
     }
   },
   {
-    ignores: ['dist/', '_source/']
+    ignores: ['dist/', '_source/', '_test/']
   }
 )
