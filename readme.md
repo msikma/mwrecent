@@ -25,6 +25,10 @@ const edits = await mw.getRecentChanges()
 console.log(edits)
 ```
 
+### Return value
+
+The following data will be returned:
+
 ```ts
 {
   apiUrl: 'https://mywikisite.com/w/api.php',
@@ -66,6 +70,12 @@ console.log(edits)
       metadata: {
         tags: [],
         sha1: '9cfb3dfc2870291a9b368a9b4956fedddd83eedd'
+      },
+      log: {
+        id: null,
+        type: null,
+        action: null,
+        params: null
       }
     },
     // ...
@@ -76,6 +86,27 @@ console.log(edits)
 The response is type `RcResult`, and the individual items in `editRecords` is type `RcEditRecord`.
 
 When creating the `MwRecent()` instance, you need to pass on the base url (for user facing urls), and the location where `api.php` can be found.
+
+### Record types
+
+MediaWiki has many different types of recent changes it can display. The most common, a regular page edit, is represented in the example above.
+
+For other types of edits, refer to the `editType` and `log` values. In the case of a regular page edit, the `log` value is all nulls, but it contains useful information for other edit types:
+
+| Record type | editType | log.type | log.action | Notes |
+|:------------|:---------|:---------|:-----------|:------|
+| Page edit | `edit` | null | null | – |
+| Page creation | `new` | null | null | – |
+| Page move/rename | `log` | `move` | `move` | `page.title` is the old name; `log.params.target_title` is the new name |
+| Page deletion | `log` | `delete` | `delete` | `comments` contains delete reason |
+| File upload | `log` | `upload` | `upload` | `log.params` contains image hash |
+| File deletion | `log` | `delete` | `delete` | – |
+| User registration | `log` | `newusers` | `create` | `log.params` contains `userid` |
+| User ban | `log` | `block` | `block` | `comments` contains ban reason |
+
+These cover most basic use cases. Many other recent change types are available.
+
+In all cases, `log.params` will contain information returned to us by the api verbatim.
 
 ## External links
 

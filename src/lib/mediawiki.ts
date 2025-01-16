@@ -108,7 +108,13 @@ export function convertRcItem(rcItem: RcItem, wUrl: string, baseUrl: string): Rc
     },
     metadata: {
       tags: rcItem.tags,
-      sha1: rcItem.sha1,
+      sha1: rcItem.sha1 ?? null,
+    },
+    log: {
+      id: rcItem.logid ?? null,
+      type: rcItem.logtype ?? null,
+      action: rcItem.logaction ?? null,
+      params: rcItem.logparams ?? null,
     },
   }
   return data

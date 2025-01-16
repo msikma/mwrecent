@@ -68,7 +68,13 @@ export interface RcItem {
   comment: string
   parsedcomment: string
   tags: string[]
-  sha1: string
+  sha1: string | null
+  logid?: number
+  logtype?: string
+  logaction?: string
+  logparams?: {
+    [key: string]: string | number | Date
+  }
 }
 
 // The full response.
@@ -126,7 +132,15 @@ export interface RcEditRecord {
   }
   metadata: {
     tags: string[]
-    sha1: string
+    sha1: string | null
+  }
+  log: {
+    id: number | null
+    type: string | null
+    action: string | null
+    params: {
+      [key: string]: string | number | Date
+    } | null
   }
 }
 
