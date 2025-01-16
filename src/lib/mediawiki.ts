@@ -3,6 +3,11 @@
 
 import type {RcResponse, RcItem, RcOptions, RcEditRecord, RcResult} from '../types.ts'
 
+// Namespace id for File.
+export const NS_FILE = 6
+// Namespace id for User.
+export const NS_USER = 2
+
 /**
  * Splits a page title up into title and namespace.
  * 

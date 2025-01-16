@@ -2,10 +2,10 @@
 // © MIT license
 
 import {fetchRcJson} from './json.ts'
-import {convertRcResponse} from './mediawiki.ts'
+import {convertRcResponse, NS_FILE, NS_USER} from './mediawiki.ts'
 import {getRcOptions, optionsToParams} from './options.ts'
 import {ensureTrailingSlash} from './util.ts'
-import type {RcOptions, RcParams, RcResult} from '../types.ts'
+import type {RcOptions, RcParams, RcResult, RcEditRecord} from '../types.ts'
 
 export interface MwRecentOptions {
   // Url to the wiki's /w path containing the api.php file.
@@ -79,5 +79,83 @@ export class MwRecent {
     const params = this.getRecentChangesParams(options)
     url.search = optionsToParams(params).toString()
     return url
+  }
+
+  /**
+   * Returns true if this is a regular page edit.
+   */
+  public static isPageEdit(rcData: RcEditRecord) {
+    return rcData.editType === 'edit'
+      && rcData.log.type === null
+      && rcData.log.action === null
+  }
+
+  /**
+   * Returns true if this is a file upload.
+   */
+  public static isFileUpload(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.type === 'upload'
+      && rcData.log.action === 'upload'
+      && rcData.page.namespaceId === NS_FILE
+  }
+
+  /**
+   * Returns true if this is a file deletion.
+   */
+  public static isFileDeletion(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.type === 'delete'
+      && rcData.log.action === 'delete'
+      && rcData.page.namespaceId === NS_FILE
+  }
+
+  /**
+   * Returns true if this is a new page creation.
+   */
+  public static isPageCreation(rcData: RcEditRecord) {
+    return rcData.editType === 'new'
+      && rcData.log.id === null
+  }
+
+  /**
+   * Returns true if this is a user ban.
+   */
+  public static isUserBan(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.id != null && rcData.log.id > 0
+      && rcData.log.type === 'block'
+      && rcData.log.action === 'block'
+      && rcData.page.namespaceId === NS_USER
+  }
+
+  /**
+   * Returns true if this is a new user registration.
+   */
+  public static isUserRegistration(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.type === 'newusers'
+      && rcData.log.action === 'create'
+      && rcData.page.namespaceId === NS_USER
+  }
+
+  /**
+   * Returns true if this is a page deletion.
+   */
+  public static isPageDeletion(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.type === 'delete'
+      && rcData.log.action === 'delete'
+      && rcData.page.namespaceId !== NS_FILE
+  }
+
+  /**
+   * Returns true if this is a page move or rename.
+   */
+  public static isPageMove(rcData: RcEditRecord) {
+    return rcData.editType === 'log'
+      && rcData.log.type === 'move'
+      && rcData.log.action === 'move'
+      && rcData.log.params != null && ('target_title' in rcData.log.params)
   }
 }
