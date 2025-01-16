@@ -121,6 +121,7 @@ export interface RcEditRecord {
   editor: {
     username: string
     userId: number
+    userUrl: string
   }
   length: {
     old: number
