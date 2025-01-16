@@ -69,7 +69,10 @@ The following data will be returned:
       },
       metadata: {
         tags: [],
-        sha1: '9cfb3dfc2870291a9b368a9b4956fedddd83eedd'
+        sha1: '9cfb3dfc2870291a9b368a9b4956fedddd83eedd',
+        minor: true,
+        redirect: false,
+        new: false
       },
       log: {
         id: null,

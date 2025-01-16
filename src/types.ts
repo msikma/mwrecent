@@ -67,6 +67,9 @@ export interface RcItem {
   timestamp: string
   comment: string
   parsedcomment: string
+  minor: '' | undefined
+  redirect: '' | undefined
+  new: '' | undefined
   tags: string[]
   sha1: string | null
   logid?: number
@@ -133,6 +136,9 @@ export interface RcEditRecord {
   metadata: {
     tags: string[]
     sha1: string | null
+    minor: boolean
+    new: boolean
+    redirect: boolean
   }
   log: {
     id: number | null

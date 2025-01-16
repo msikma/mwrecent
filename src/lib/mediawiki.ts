@@ -109,6 +109,9 @@ export function convertRcItem(rcItem: RcItem, wUrl: string, baseUrl: string): Rc
     metadata: {
       tags: rcItem.tags,
       sha1: rcItem.sha1 ?? null,
+      minor: rcItem.minor === '',
+      redirect: rcItem.redirect === '',
+      new: rcItem.new === '',
     },
     log: {
       id: rcItem.logid ?? null,
