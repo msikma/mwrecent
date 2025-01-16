@@ -1,83 +1,133 @@
 // @dada78641/mwrecent <https://github.com/msikma/mwrecent>
 // © MIT license
 
-import type {Item} from 'feedparser'
-import type {PageEdit} from '../types.ts'
-
-const SPECIAL_PAGE = 'Special:RecentChanges'
+import type {RcResponse, RcItem, RcOptions, RcEditRecord, RecentChanges} from '../types.ts'
 
 /**
- * Returns the base url for a wiki.
+ * Splits a page title up into title and namespace.
  * 
- * @param feedItem feed item we're operating on
- * @returns the wiki's base url
+ * @param title MediaWiki page title
  */
-function getWikiBaseUrl(feedItem: Item) {
-  const special = feedItem.meta.link
-  if (!special.includes(SPECIAL_PAGE)) {
-    throw new Error('Not a valid atom feed item')
+function splitPageTitle(title: string) {
+  const bits = title.split(':')
+  if (bits.length === 1) {
+    return [title, 'Main']
   }
-  return special.replace(SPECIAL_PAGE, '')
+  return [bits.slice(1).join(':'), bits[0]]
 }
 
 /**
- * Returns the url of a feed item's article.
+ * Sanitizes a page title for use in urls.
  * 
- * @param feedItem feed item we're operating on
- * @param baseUrl the base url obtained by getWikiBaseUrl()
+ * @param title MediaWiki article name
+ * @returns sanitized MediaWiki article name for use in urls
+ */
+function sanitizePageTitle(title: string) {
+  return title.replaceAll(' ', '_')
+}
+
+/**
+ * Returns an article's user facing url.
+ * 
+ * @param pageTitle title of the page we're linking to
+ * @param baseUrl the wiki's base url
  * @returns link to the article represented by this feed item
  */
-function getArticleUrl(feedItem: Item, baseUrl: string) {
+function getArticleUrl(pageTitle: string, baseUrl: string) {
   // Note: this will be an existing page, so the title will already be fully sanitized.
   // All we need to do is replace space swith underscores.
-  return `${baseUrl}${feedItem.title.replaceAll(' ', '_')}`
+  return `${baseUrl}${sanitizePageTitle(pageTitle)}`
 }
 
 /**
  * Returns a url to the edit author's userpage.
  * 
- * @param feedItem the feed item we're operating on
- * @param baseUrl the base url obtained by getWikiBaseUrl()
+ * @param username the username string
+ * @param baseUrl the wiki's base url
  * @returns link to the userpage of the edit's author
  */
-function getEditAuthorUrl(feedItem: Item, baseUrl: string) {
-  return `${baseUrl}User:${feedItem.author.replaceAll(' ', '_')}`
+function getEditAuthorUrl(username: string, baseUrl: string) {
+  return `${baseUrl}User:${sanitizePageTitle(username)}`
 }
 
 /**
- * Returns the diff and oldid of a given edit url.
- */
-function getDiffInfo(diffLink: string) {
-  const url = new URL(diffLink)
-  const diff = Number(url.searchParams.get('diff') || undefined)
-  const oldid = Number(url.searchParams.get('oldid') || undefined)
-  if (isNaN(diff) || isNaN(oldid)) {
-    throw new Error('Not a valid atom feed item')
-  }
-  return [diff, oldid]
-}
-
-/**
- * Returns a page edit information object from an item in the recent changes atom feed.
+ * Returns url to a revision, either as a permalink or as a diff with the previous edit.
  * 
- * @param feedItem feed item we're operating on
- * @returns page edit information object
+ * @param pageTitle title of the page we're linking to
+ * @param wUrl the wiki's api base url
+ * @param type type to return; permalink or diff with previous version
  */
-export function feedItemToPageEdit(feedItem: Item): PageEdit {
-  const wikiBaseUrl = getWikiBaseUrl(feedItem)
-  const articleLink = getArticleUrl(feedItem, wikiBaseUrl)
-  const authorLink = getEditAuthorUrl(feedItem, wikiBaseUrl)
-  const [diff, oldid] = getDiffInfo(feedItem.link)
+function getRevisionUrl(pageTitle: string, wUrl: string, type: 'permalink' | 'diff') {
+  const sanitizedTitle = sanitizePageTitle(pageTitle)
+  const param = type === 'permalink' ? 'oldid' : 'diff'
+  return `${wUrl}index.php?title=${sanitizedTitle}&${param}=2152`
+}
+
+/**
+ * Converts a single recent change item to user facing data.
+ * 
+ * @param rcItem raw recent change edit from the api
+ * @param wUrl url to the wiki's api path
+ * @param baseUrl url to the wiki's user facing base path
+ * @returns restructured recent change item
+ */
+export function convertRcItem(rcItem: RcItem, wUrl: string, baseUrl: string): RcEditRecord {
+  const [title, namespace] = splitPageTitle(rcItem.title)
+  const data = {
+    editType: rcItem.type,
+    page: {
+      id: rcItem.pageid,
+      title: rcItem.title,
+      name: title,
+      url: getArticleUrl(rcItem.title, baseUrl),
+      namespace,
+      namespaceId: rcItem.ns,
+    },
+    revision: {
+      revisionUrl: getRevisionUrl(rcItem.title, wUrl, 'permalink'),
+      revisionDiffUrl: getRevisionUrl(rcItem.title, wUrl, 'diff'),
+      currentRevisionId: rcItem.revid,
+      previousRevisionId: rcItem.old_revid,
+      revisionChangeId: rcItem.rcid,
+    },
+    editor: {
+      username: rcItem.user,
+      userId: rcItem.userid,
+      userUrl: getEditAuthorUrl(rcItem.user, baseUrl),
+    },
+    length: {
+      old: rcItem.oldlen,
+      new: rcItem.newlen,
+    },
+    timestamps: {
+      editedAt: new Date(rcItem.timestamp),
+    },
+    comments: {
+      raw: rcItem.comment || null,
+      parsed: rcItem.parsedcomment || null,
+    },
+    metadata: {
+      tags: rcItem.tags,
+      sha1: rcItem.sha1,
+    },
+  }
+  return data
+}
+
+/**
+ * Converts a recent changes api response object to user facing data.
+ * 
+ * @param rcResponseJson raw response object from the api
+ * @param wUrl url to the wiki's api path
+ * @param baseUrl url to the wiki's user facing base path
+ * @returns restructured recent changes data
+ */
+export function convertRcResponse(rcResponseJson: RcResponse, wUrl: string, baseUrl: string, options: RcOptions): RecentChanges {
+  const changeItems = rcResponseJson.query.recentchanges
+  const items = changeItems.map(rcItem => convertRcItem(rcItem, wUrl, baseUrl))
   return {
-    articleName: feedItem.title,
-    articleLink,
-    timestamp: (feedItem.date!).toISOString(),
-    author: feedItem.author,
-    authorLink: authorLink,
-    diffLink: feedItem.link,
-    diffId: diff,
-    diffOldId: oldid,
-    wikiBaseUrl,
-    feedUrl: feedItem.meta.xmlurl,
+    apiUrl: `${wUrl}api.php`,
+    baseUrl,
+    editRecords: items
   }
 }

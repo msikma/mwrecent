@@ -6,43 +6,80 @@ Library that fetches and parses "recent edits" feeds from [MediaWiki](https://ww
 
 ## Usage
 
+Install through npm:
+
 ```bash
 npm i @dada78641/mwrecent
 ```
 
-```ts
-import {MwRecent, type PageEdit} from '@dada78641/mwrecent'
+Use as follows:
 
-const mw = new MwRecent('https://mywikisite.com/w')
+```ts
+import {MwRecent} from '@dada78641/mwrecent'
+
+const mw = new MwRecent({
+  wUrl: 'https://mywikisite.com/w/',
+  baseUrl: 'https://mywikisite.com/wiki/'
+})
 const edits = await mw.getRecentChanges()
 console.log(edits)
 ```
 
 ```ts
-[
-  {
-    articleName: 'Namespace:Article name',
-    articleLink: 'https://mywikisite.com/wiki/Namespace:Article_name',
-    timestamp: '2025-01-13T22:49:21.000Z',
-    author: 'Dada78641',
-    authorLink: 'https://mywikisite.com/wiki/User:Dada78641',
-    diffLink: 'https://mywikisite.com/w/index.php?title=Namespace:Article_name&diff=2152&oldid=1544',
-    diffId: 2103,
-    diffOldId: 2088,
-    wikiBaseUrl: 'https://mywikisite.com/wiki/',
-    feedUrl: 'https://mywikisite.com/w/api.php?feedformat=atom&days=90&limit=50&action=feedrecentchanges&urlversion=1'
-  },
-  // ...
-]
+{
+  apiUrl: 'https://mywikisite.com/w/api.php',
+  baseUrl: 'https://mywikisite.com/wiki/',
+  editRecords: [
+    {
+      editType: 'edit',
+      page: {
+        id: 98,
+        title: 'My Namespace:Edit guide',
+        name: 'Edit guide',
+        url: 'https://mywikisite.com/wiki/My_Namespace:Edit_guide',
+        namespace: 'My Namespace',
+        namespaceId: 4
+      },
+      revision: {
+        revisionUrl: 'https://mywikisite.com/w/index.php?title=My_Namespace:Edit_guide&oldid=2152',
+        revisionDiffUrl: 'https://mywikisite.com/w/index.php?title=My_Namespace:Edit_guide&diff=2152',
+        currentRevisionId: 2152,
+        previousRevisionId: 1544,
+        revisionChangeId: 2174
+      },
+      editor: {
+        username: 'Dada78641',
+        userId: 3,
+        userUrl: 'https://mywikisite.com/wiki/User:Dada78641'
+      },
+      length: {
+        old: 4011,
+        new: 4037
+      },
+      timestamps: {
+        editedAt: '2025-01-13T22:49:21.000Z' // as Date object
+      },
+      comments: {
+        raw: "/* '''Structure of the DAT File''' */",
+        parsed: '<span dir="auto"><span class="autocomment"><a href="/wiki/My_Namespace:Edit_guide#&#039;&#039;&#039;Structure_of_the_DAT_File&#039;&#039;&#039;" title="My Namespace:Edit Guide">→‎&#039;&#039;&#039;Structure of the DAT File&#039;&#039;&#039;</a></span></span>'
+      },
+      metadata: {
+        tags: [],
+        sha1: '9cfb3dfc2870291a9b368a9b4956fedddd83eedd'
+      }
+    },
+    // ...
+  ]
+}
 ```
 
-Note: pass the directory where `api.php` can be found in the constructor.
+The response is type `RcResult`, and the individual items in `editRecords` is type `RcEditRecord`.
 
-The `diffLink` string functions as unique identifier for an edit.
+When creating the `MwRecent()` instance, you need to pass on the base url (for user facing urls), and the location where `api.php` can be found.
 
 ## External links
 
-* [MediaWiki API - Feedrecentchanges](https://www.mediawiki.org/wiki/API:Feedrecentchanges) – api documentation for the `feedrecentchanges` action
+* [MediaWiki API - RecentChanges](https://www.mediawiki.org/wiki/API:RecentChanges) – api documentation for the `recentchanges` action
 
 ## License
 

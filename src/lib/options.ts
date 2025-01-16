@@ -1,35 +1,76 @@
 // @dada78641/mwrecent <https://github.com/msikma/mwrecent>
 // © MIT license
 
-import type {RecentChangesOptions} from '../types.ts'
+import {difference, intersection} from 'lodash-es'
+import type {RcOptions, RcOptionKey, RcParams, EditProps} from '../types.ts'
 
-// Types of options we're converting to search params.
+// All recent changes props we can request.
+export const ALL_RC_PROPS: EditProps[] = [
+  'user',
+  'userid',
+  'comment',
+  'parsedcomment',
+  'flags',
+  'timestamp',
+  'title',
+  'ids',
+  'sizes',
+  'redirect',
+  'patrolled',
+  'loginfo',
+  'tags',
+  'sha1'
+]
+
+// All props that cannot normally be requested without having a special permission.
+export const ALL_RESTRICTED_RC_PROPS: EditProps[] = [
+  'patrolled',
+]
+
+// All props that can be publicly requested.
+export const ALL_PUBLIC_RC_PROPS: EditProps[] = difference(ALL_RC_PROPS, ALL_RESTRICTED_RC_PROPS)
+
+// Option types; this determines how they're converted to URL parameters.
 const optionTypes = {
-  verbatim: [
-    'feedformat',
-    'namespace',
-    'days',
-    'limit',
-    'from',
-    'target',
-    // Global api arguments
+  string: [
+    'rcstart',
+    'rcend',
+    'rcdir',
+    'rcuser',
+    'rcexcludeuser',
+    'rclimit',
+    'rctitle',
+    'rccontinue',
+    'rcslot',
+    // Required parameters.
     'action',
-    'urlversion',
+    'list',
+    'format',
   ],
-  bool: [
-    'invert',
-    'associated',
-    'hideminor',
-    'hidebots',
-    'hideliu',
-    'hidepatrolled',
-    'hidemyself',
-    'hidecategorization',
-    'inverttags',
+  boolean: [
+    'rctoponly',
+    'rcgeneraterevisions',
   ],
   array: [
-    'tagfilter',
+    'rctag',
+    'rcprop',
+    'rcshow',
+    'rctype',
   ],
+  arrayOrWildcard: [
+    'rcnamespace'
+  ],
+}
+
+/**
+ * Returns whether all the public edit props are present in a given list of edit props.
+ * 
+ * @param props given list of edit props
+ * @returns whether the given list includes all the public edit props
+ */
+export function hasAllPublicEditProps(props: EditProps[]): boolean {
+  const intr = intersection(props, ALL_PUBLIC_RC_PROPS)
+  return intr.length === ALL_PUBLIC_RC_PROPS.length
 }
 
 /**
@@ -49,18 +90,17 @@ export function isValidDate(date: Date | string) {
 /**
  * Throws an error if a given object does not represent a valid options object.
  * 
+ * Very basic checking only for now.
+ * 
  * @param options options object to check
  */
-export function assertValidOptions(options: RecentChangesOptions) {
-  const {days, limit, from} = options
-  if (days != null && days < 1) {
-    throw new Error(`'days' must be no less than 1: ${days}`)
+export function assertValidOptions(options: RcOptions) {
+  const {rcstart, rcend, rcdir} = options
+  if (rcdir === 'newer' && rcstart && rcend && rcstart > rcend) {
+    throw new Error(`when enumerating oldest first, 'rcstart' has to be before 'rcend'`)
   }
-  if (limit != null && (limit < 1 || limit > 50)) {
-    throw new Error(`'limit' must be between 1 and 50: ${limit}`)
-  }
-  if (from != null && !isValidDate(from)) {
-    throw new Error(`'from' must be a parseable date or the string "now": ${from}`)
+  if (rcdir === 'older' && rcstart && rcend && rcstart < rcend) {
+    throw new Error(`when enumerating newest first, 'rcstart' has to be after 'rcend'`)
   }
   return options
 }
@@ -71,26 +111,40 @@ export function assertValidOptions(options: RecentChangesOptions) {
  * @param options options for our api call
  * @returns url search parameters for making an api call with
  */
-export function optionsToParams(options: RecentChangesOptions): URLSearchParams {
+export function optionsToParams(options: RcParams): URLSearchParams {
   const params = new URLSearchParams()
-  for (const tag of optionTypes.verbatim) {
-    if (!(tag in options)) {
-      continue
+
+  for (const [type, keys] of Object.entries(optionTypes)) {
+    for (const key of keys) {
+      // All items are optional (but at this point we will have merged in required parameters).
+      if (!(key in options)) {
+        continue
+      }
+
+      // Assert that this is a valid option key.
+      const tag = key as RcOptionKey
+
+      // Convert the item to a URL parameter.
+      if (type === 'string') {
+        params.set(tag, String(options[tag]))
+      }
+      if (type === 'boolean') {
+        params.set(tag, options[tag] ? '1' : '0')
+      }
+      if (type === 'array' || type === 'arrayOrWildcard') {
+        if (type === 'arrayOrWildcard' && options[tag] === '*') {
+          params.set(tag, options[tag])
+        }
+        else {
+          if (!Array.isArray(options[tag])) {
+            throw new Error(`'${tag}' should be an array`)
+          }
+          params.set(tag, options[tag].join('|'))
+        }
+      }
     }
-    params.set(tag, String(options[tag]))
   }
-  for (const tag of optionTypes.bool) {
-    if (!(tag in options)) {
-      continue
-    }
-    params.set(tag, options[tag] ? '1' : '0')
-  }
-  for (const tag of optionTypes.array) {
-    if ((!(tag in options)) || !Array.isArray(options[tag])) {
-      continue
-    }
-    params.set(tag, options[tag].join('|'))
-  }
+
   return params
 }
 
@@ -99,16 +153,14 @@ export function optionsToParams(options: RecentChangesOptions): URLSearchParams 
  * 
  * @param options options object to check
  */
-export function getRecentChangesOptions(options: RecentChangesOptions) {
-  const defaultParams = {
-    days: 90,
-    limit: 50,
+export function getRcOptions(options: RcOptions) {
+  const defaultOptions: RcOptions = {
+    rcnamespace: '*',
+    rcprop: ALL_PUBLIC_RC_PROPS,
+    rclimit: 10,
   }
   return assertValidOptions({
-    ...defaultParams,
+    ...defaultOptions,
     ...options,
-    action: 'feedrecentchanges',
-    feedformat: 'atom',
-    urlversion: '1',
   })
 }
