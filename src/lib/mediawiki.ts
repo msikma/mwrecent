@@ -1,7 +1,7 @@
 // @dada78641/mwrecent <https://github.com/msikma/mwrecent>
 // © MIT license
 
-import type {RcResponse, RcItem, RcOptions, RcEditRecord, RecentChanges} from '../types.ts'
+import type {RcResponse, RcItem, RcOptions, RcEditRecord, RcResult} from '../types.ts'
 
 /**
  * Splits a page title up into title and namespace.
@@ -122,7 +122,7 @@ export function convertRcItem(rcItem: RcItem, wUrl: string, baseUrl: string): Rc
  * @param baseUrl url to the wiki's user facing base path
  * @returns restructured recent changes data
  */
-export function convertRcResponse(rcResponseJson: RcResponse, wUrl: string, baseUrl: string, options: RcOptions): RecentChanges {
+export function convertRcResponse(rcResponseJson: RcResponse, wUrl: string, baseUrl: string, options: RcOptions): RcResult {
   const changeItems = rcResponseJson.query.recentchanges
   const items = changeItems.map(rcItem => convertRcItem(rcItem, wUrl, baseUrl))
   return {
